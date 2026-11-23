@@ -135,6 +135,7 @@ function createBbNavigate(
         setRootComposeProjectId(options.projectId);
       }
       const hostId = options?.hostId?.trim() ?? "";
+      const parentThreadId = options?.experimental_parentThreadId?.trim() ?? "";
       onNavigate?.();
       void navigate(getRootComposeRoutePath(), {
         ...(replacesAutomationEditRoute ? { replace: true } : {}),
@@ -148,6 +149,7 @@ function createBbNavigate(
             ? { reuseEnvironmentId: options.environmentId }
             : {}),
           ...(hostId.length > 0 ? { newEnvironmentHostId: hostId } : {}),
+          ...(parentThreadId.length > 0 ? { parentThreadId } : {}),
           ...(replacesAutomationEditRoute
             ? { replaceInitialPrompt: true }
             : {}),

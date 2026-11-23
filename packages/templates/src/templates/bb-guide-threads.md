@@ -137,6 +137,14 @@ Handoff:
   --provider, --model, --environment and --prompt 'Continue from
   @thread:THREAD_ID ...'; SDK callers pass the same fields to threads.spawn.
 
+New child thread:
+  The app's New child thread (in a thread's menu) opens the new-thread screen
+  in that thread's project and environment; the thread you send becomes its
+  child, with parent notifications off. Remove the parent on that screen to
+  start a top-level thread instead. From the CLI, run bb thread spawn with
+  --parent-thread <id> --parent-notifications off; SDK callers pass
+  parentThreadId and parentNotifications to threads.spawn.
+
 Forking:
 
   bb thread fork <source-thread-id> [options]

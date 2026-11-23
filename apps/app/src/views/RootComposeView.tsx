@@ -8,6 +8,13 @@ import {
   DEFAULT_THREAD_CREATION_PLACEMENT,
 } from "@/lib/thread-creation-placement";
 import { useRootComposePlacement } from "@/lib/root-compose-selection";
+import {
+  keepRootComposeParentThread,
+  readRootComposeParentThreadId,
+  rootComposeParentThreadFields,
+  withoutRootComposeParentThread,
+} from "@/lib/root-compose-parent-thread";
+import { ComposeParentThreadCard } from "@/components/promptbox/banner/ComposeParentThreadCard";
 import { useInitialPromptDraft } from "@/components/promptbox/mentions/initial-prompt-draft";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -409,6 +416,9 @@ export function RootComposeView() {
   );
   const [navigateToThreadAfterCreate] =
     useNavigateToThreadAfterCreatePreference();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const parentThreadId = readRootComposeParentThreadId(location.state);
 
   const handleSubmit = useCallback(
     async (request: NewThreadComposerSubmission) => {
@@ -416,18 +426,28 @@ export function RootComposeView() {
       const thread = await createThread.mutateAsync({
         ...requestFields,
         ...placement,
+        ...rootComposeParentThreadFields(parentThreadId),
         ...(sendAt === undefined ? {} : { sendAt }),
       });
       setLastCreatedThreadId(thread.id);
       setPlacement(DEFAULT_THREAD_CREATION_PLACEMENT);
       if (navigateToThreadAfterCreate) {
         navigateInPane({ projectId: thread.projectId, threadId: thread.id });
+      } else if (parentThreadId !== null) {
+        void navigate(getRootComposeRoutePath() + location.search, {
+          replace: true,
+          state: withoutRootComposeParentThread(location.state),
+        });
       }
     },
     [
       createThread,
+      location.search,
+      location.state,
+      navigate,
       navigateInPane,
       navigateToThreadAfterCreate,
+      parentThreadId,
       placement,
       setPlacement,
     ],
@@ -596,7 +616,7 @@ function RootComposeSurface({
     }
     void navigate(getRootComposeRoutePath() + location.search, {
       replace: true,
-      state: null,
+      state: keepRootComposeParentThread(location.state, null),
     });
   }, [
     focusPromptBox,
@@ -621,7 +641,7 @@ function RootComposeSurface({
     }
     void navigate(getRootComposeRoutePath() + location.search, {
       replace: true,
-      state: { focusPrompt: true },
+      state: keepRootComposeParentThread(location.state, { focusPrompt: true }),
     });
   }, [
     location.search,
@@ -1338,32 +1358,52 @@ function RootComposeSurface({
     },
     [parsedEnvironment, setEnvironmentSelectionValue],
   );
+  const composeParentThreadId = readRootComposeParentThreadId(location.state);
+  const handleRemoveComposeParentThread = useCallback(() => {
+    void navigate(getRootComposeRoutePath() + location.search, {
+      replace: true,
+      state: withoutRootComposeParentThread(location.state),
+    });
+    window.requestAnimationFrame(focusPromptBox);
+  }, [focusPromptBox, location.search, location.state, navigate]);
   const promptBanner = useMemo(() => {
+    const parentThreadCard =
+      composeParentThreadId === null ? null : (
+        <ComposeParentThreadCard
+          parentThreadId={composeParentThreadId}
+          onRemove={handleRemoveComposeParentThread}
+        />
+      );
     if (blockingProviderCliStatus === null) {
-      return null;
+      return parentThreadCard;
     }
     return (
-      <ProviderCliBanner
-        displayName={blockingProviderCliStatus.displayName}
-        installed={blockingProviderCliStatus.installed}
-        currentVersion={blockingProviderCliStatus.currentVersion}
-        minimumSupportedVersion={
-          blockingProviderCliStatus.minimumSupportedVersion
-        }
-        canRunAction={selectedProviderCliIssue !== null}
-        actionRunning={
-          rootProjectHostId !== null &&
-          (runningJobKey ===
-            providerCliJobKey(rootProjectHostId, selectedProviderId) ||
-            queuedJobKeys.has(
-              providerCliJobKey(rootProjectHostId, selectedProviderId),
-            ))
-        }
-        onAction={handleRunProviderCliAction}
-      />
+      <>
+        <ProviderCliBanner
+          displayName={blockingProviderCliStatus.displayName}
+          installed={blockingProviderCliStatus.installed}
+          currentVersion={blockingProviderCliStatus.currentVersion}
+          minimumSupportedVersion={
+            blockingProviderCliStatus.minimumSupportedVersion
+          }
+          canRunAction={selectedProviderCliIssue !== null}
+          actionRunning={
+            rootProjectHostId !== null &&
+            (runningJobKey ===
+              providerCliJobKey(rootProjectHostId, selectedProviderId) ||
+              queuedJobKeys.has(
+                providerCliJobKey(rootProjectHostId, selectedProviderId),
+              ))
+          }
+          onAction={handleRunProviderCliAction}
+        />
+        {parentThreadCard}
+      </>
     );
   }, [
     blockingProviderCliStatus,
+    composeParentThreadId,
+    handleRemoveComposeParentThread,
     rootProjectHostId,
     handleRunProviderCliAction,
     queuedJobKeys,

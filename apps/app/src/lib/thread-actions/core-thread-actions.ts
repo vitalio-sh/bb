@@ -195,6 +195,31 @@ const coreThreadActions = definePluginApp((app) => {
     },
   });
   app.slots.experimental_threadAction({
+    id: "newChildThread",
+    group: GROUPS.open,
+    order: 25,
+    title: "New child thread",
+    icon: "ChildThread",
+    item: ({ thread, navigate }) => {
+      if (thread.isHidden || thread.archivedAt !== null) return null;
+      const environment = thread.environment;
+      return {
+        label: "New child thread",
+        icon: "ChildThread",
+        run: () =>
+          navigate.toCompose({
+            projectId: thread.projectId,
+            ...(environment === null || environment.path === null
+              ? {}
+              : { environmentId: environment.id }),
+            placement: { sectionId: null, pinned: false },
+            experimental_parentThreadId: thread.id,
+            focusPrompt: true,
+          }),
+      };
+    },
+  });
+  app.slots.experimental_threadAction({
     id: "copyLink",
     group: GROUPS.open,
     order: 20,

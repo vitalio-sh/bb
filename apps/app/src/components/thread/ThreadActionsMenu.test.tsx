@@ -12,7 +12,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createStore, Provider } from "jotai";
 import { useSyncExternalStore, type ReactElement } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   experimental_THREAD_ACTION_GROUPS,
@@ -29,7 +29,7 @@ import {
   resetPluginSlotStoreForTest,
   setPluginSlotRegistrations,
 } from "@/lib/plugin-slots";
-import { getThreadRoutePath } from "@/lib/route-paths";
+import { getRootComposeRoutePath, getThreadRoutePath } from "@/lib/route-paths";
 import type { SplitLayout } from "@/lib/split-layout";
 import { splitLayoutAtom } from "@/lib/split-layout/atoms";
 import { threadRequestsAtom } from "@/lib/thread-requests";
@@ -311,6 +311,15 @@ function renderSurface(
   );
 }
 
+function LocationProbe() {
+  const location = useLocation();
+  return (
+    <output data-testid="location">
+      {JSON.stringify({ pathname: location.pathname, state: location.state })}
+    </output>
+  );
+}
+
 async function openMenu(): Promise<HTMLElement> {
   return waitFor(() => {
     const menu = screen.queryByRole("menu") ?? screen.queryByRole("dialog");
@@ -391,6 +400,7 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
       desktop: [
         "Open in split",
         "Copy link",
+        "New child thread",
         "---",
         "Pin",
         "Mark unread",
@@ -408,6 +418,7 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
       ],
       compact: [
         "Copy link",
+        "New child thread",
         "New thread in environment",
         "---",
         "Pin",
@@ -522,6 +533,7 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
       layout: null,
       desktop: [
         "Copy link",
+        "New child thread",
         "---",
         "Pin",
         "Mark unread",
@@ -539,6 +551,7 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
       ],
       compact: [
         "Copy link",
+        "New child thread",
         "New thread in environment",
         "---",
         "Pin",
@@ -564,6 +577,7 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
       desktop: [
         "Focus split",
         "Copy link",
+        "New child thread",
         "---",
         "Pin",
         "Mark unread",
@@ -581,6 +595,7 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
       ],
       compact: [
         "Copy link",
+        "New child thread",
         "New thread in environment",
         "---",
         "Pin",
@@ -608,6 +623,7 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
       layout: twoPaneLayout("pane_target"),
       desktop: [
         "Copy link",
+        "New child thread",
         "---",
         "Pin",
         "Mark unread",
@@ -625,6 +641,7 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
       ],
       compact: [
         "Copy link",
+        "New child thread",
         "New thread in environment",
         "---",
         "Pin",
@@ -758,6 +775,41 @@ describe.each(SURFACES)("thread actions on the $name", (surface) => {
     });
     await waitFor(() =>
       expect(copiedToast).toHaveBeenCalledWith("Thread link copied"),
+    );
+  });
+
+  it("starts a child thread of this thread in its project and environment", async () => {
+    renderSurface(
+      {
+        ...surface,
+        render: (options) => (
+          <>
+            {surface.render(options)}
+            <LocationProbe />
+          </>
+        ),
+      },
+      { thread: baseThread },
+    );
+
+    await surface.open();
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "New child thread" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        JSON.parse(screen.getByTestId("location").textContent ?? "null"),
+      ).toEqual({
+        pathname: getRootComposeRoutePath(),
+        state: {
+          focusPrompt: true,
+          initialPrompt: "",
+          placement: { sectionId: null, pinned: false },
+          reuseEnvironmentId: "env_a",
+          parentThreadId: "thr_target",
+        },
+      }),
     );
   });
 
@@ -903,6 +955,7 @@ describe("thread action registrations", () => {
     ).toEqual([
       "bb--core/split",
       "bb--core/copyLink",
+      "bb--core/newChildThread",
       "bb--core/newThreadInEnvironment",
       "bb--core/pin",
       "bb--core/read",

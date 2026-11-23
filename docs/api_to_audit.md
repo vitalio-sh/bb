@@ -4123,14 +4123,13 @@ Requires SDK 0.6.178.
    split layout, not the calling surface. Check plugin-hosted surfaces (nav
    panel pages, overlays) once they host threads.
 
-
 ## `experimental_makeActionContext` / `ExperimentalActionContextFixture` / `ExperimentalActionContextCall` (`@get-bb/plugin-sdk/testing`)
 
 Requires SDK 0.6.178.
 
 - **Surface:** `experimental_makeActionContext(overrides?: Partial<ExperimentalPluginActionContext>): ExperimentalActionContextFixture`,
   a complete `ExperimentalPluginActionContext` plus `calls:
-  ExperimentalActionContextCall[]` (`{ member, args }`). Defaults record each
+ExperimentalActionContextCall[]` (`{ member, args }`). Defaults record each
   call: `threadRequests` methods resolve, `composer` is null, `navigate` methods return
   false, `panel` is `experimental_makePanelController()`, and `sdk` methods
   reject with `sdk.<area>.<method> is not stubbed`. Overrides replace members;
@@ -4148,6 +4147,7 @@ Requires SDK 0.6.178.
   `NavigateCall` shape `renderSlot` uses, and whether composer and message
   contexts need their own builders once their fields grow. Then rename
   project-wide and remove this entry.
+
 ## `app.slots.experimental_browserToolbarAction` (`@get-bb/plugin-sdk/app`)
 
 Renders a plugin component beside the address bar in each Browser tab. It
@@ -4997,6 +4997,39 @@ listed under Scheduled removals.
 Audit pinned groups, custom sections, project/machine groups, route
 transitions, draft recovery, and third-party sidebar compatibility before
 stabilizing this option.
+
+## `BbNavigate.toCompose({ experimental_parentThreadId })` (`@get-bb/plugin-sdk/app`)
+
+Opens the compose screen to create a child of the given thread. The parent
+rides on the compose route's history state, not in a stored atom: the screen
+keeps it while it consumes its single-use targets (placement, environment,
+seeded prompt), shows it as a "Child thread of …" card above the composer with
+a remove button, and sends `parentThreadId` with `parentNotifications: "off"`
+on create. Opening compose without it (the sidebar's New thread, `thread.new`)
+starts a top-level thread, Back returns to the child-thread compose entry, and
+staying on the screen after a create drops the parent. Parent rules (archived,
+deleted, or a tree deeper than four levels) stay on the server, which rejects
+the create with `parent_thread_invalid`.
+
+Core caller: the `newChildThread` thread action (`core-thread-actions.ts`,
+"New child thread" in every thread menu), which also passes the parent's
+project, its environment when it has a checkout path, and an unpinned,
+section-less placement.
+
+**Audit before stabilizing.**
+
+1. **Notification default.** Children created this way never wake the parent.
+   Confirm `off` beats `auto` (which spends a parent turn after every child
+   turn) for user-started children, and whether the card should offer a toggle
+   instead of the thread menu's Notify parent afterwards.
+2. **Environment default.** The core action reuses the parent's environment.
+   Confirm that is right for worktree projects, where parallel threads then
+   share one checkout, versus a new worktree on the parent's machine (the
+   server's default for an unspecified child environment).
+3. **Transport.** Like `placement` and `environmentId`, the parent rides on
+   router state. Confirm it survives the compose screen's mobile and split-pane
+   routes, and decide whether a stale parent (archived while composing) should
+   be cleared before submit rather than failing the create.
 
 ## Provider discovery metadata
 

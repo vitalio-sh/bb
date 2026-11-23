@@ -5583,7 +5583,11 @@ export interface BbNavigate {
    * unless `environmentId` or `hostId` is set, which resets it to unpinned
    * and outside sections. `environmentId` reuses that environment and
    * `hostId` picks a machine for a new one (`environmentId` wins when both
-   * are set).
+   * are set). `experimental_parentThreadId` creates the thread as a child of
+   * that thread, with parent notifications off; the compose screen shows the
+   * parent and lets the user remove it. The parent belongs to that compose
+   * visit: opening the compose screen again without it starts a top-level
+   * thread. Experimental: see docs/api_to_audit.md.
    */
   toCompose(options?: {
     projectId?: string;
@@ -5592,6 +5596,7 @@ export interface BbNavigate {
     placement?: { sectionId: string | null; pinned: boolean };
     environmentId?: string;
     hostId?: string;
+    experimental_parentThreadId?: string;
   }): void;
   /**
    * Open an HTTP(S) URL using this client's BB browser preference, or request
